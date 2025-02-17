@@ -1,23 +1,8 @@
 import streamlit as st
 import pandas as pd
-import psycopg2
-from datetime import datetime
-
-# Database connection parameters
-DB_HOST = 'ep-noisy-moon-a5gxiq67-pooler.us-east-2.aws.neon.tech'
-DB_NAME = 'neondb'
-DB_USER = 'neondb_owner'
-DB_PASS = 'npg_Z6LXsyMqgb5a'
-
-# Function to establish a connection to the database
-def get_db_connection():
-    conn = psycopg2.connect(
-        host=DB_HOST,
-        database=DB_NAME,
-        user=DB_USER,
-        password=DB_PASS
-    )
-    return conn
+import numpy as np
+import json
+import matplotlib.pyplot as plt
 
 # Streamlit UI
 st.title("Pension Growth Calculator")
@@ -50,72 +35,47 @@ pension_df = pd.DataFrame(balances)
 st.subheader("Pension Growth Over Time")
 st.dataframe(pension_df)
 
-# Save to Database
+# Plot the growth
+st.subheader("Pension Balance Over Time")
+plt.figure(figsize=(8, 5))
+plt.plot(pension_df["Year"], pension_df["Pension Balance ($)"], marker="o", linestyle="-", label="Pension Balance")
+plt.axvline(contribution_years, color='r', linestyle="--", label="End of Contributions")
+plt.xlabel("Years")
+plt.ylabel("Pension Balance ($)")
+plt.legend()
+plt.grid(True)
+st.pyplot(plt)
+
+# Local Storage: Save & Retrieve Data
+st.subheader("Save Your Calculation")
+
+# Load previous data from session state
+if "saved_calculations" not in st.session_state:
+    st.session_state.saved_calculations = []
+
+# Button to save calculation
 if st.button("Save Calculation"):
-    try:
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS pension_calculations (
-                id SERIAL PRIMARY KEY,
-                initial_balance NUMERIC,
-                annual_contribution NUMERIC,
-                expected_return NUMERIC,
-                contribution_years INTEGER,
-                total_growth_years INTEGER,
-                final_balance NUMERIC,
-                calculation_date TIMESTAMP
-            )
-        """)
-        cursor.execute("""
-            INSERT INTO pension_calculations (
-                initial_balance,
-                annual_contribution,
-                expected_return,
-                contribution_years,
-                total_growth_years,
-                final_balance,
-                calculation_date
-            ) VALUES (%s, %s, %s, %s, %s, %s, %s)
-        """, (
-            initial_balance,
-            annual_contribution,
-            expected_return,
-            contribution_years,
-            total_growth_years,
-            balance,
-            datetime.now()
-        ))
-        conn.commit()
-        cursor.close()
-        conn.close()
-        st.success("Calculation saved successfully!")
-    except Exception as e:
-        st.error(f"An error occurred: {e}")
+    new_entry = {
+        "Initial Balance ($)": initial_balance,
+        "Annual Contribution ($)": annual_contribution,
+        "Expected Return (%)": round(expected_return * 100, 2),
+        "Contribution Years": contribution_years,
+        "Total Growth Years": total_growth_years,
+        "Final Balance ($)": round(balance, 2),
+    }
 
-# Display Last 10 Entries
+    # Add to session state (store last 10 entries)
+    st.session_state.saved_calculations.insert(0, new_entry)
+    st.session_state.saved_calculations = st.session_state.saved_calculations[:10]
+
+    # Convert to JSON and store in browser local storage using Streamlit components
+    st.json(new_entry)
+    st.success("Calculation saved!")
+
+# Show Last 10 Entries
 st.subheader("Last 10 Saved Calculations")
-try:
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    cursor.execute("""
-        SELECT initial_balance, annual_contribution, expected_return,
-               contribution_years, total_growth_years, final_balance, calculation_date
-        FROM pension_calculations
-        ORDER BY calculation_date DESC
-        LIMIT 10
-    """)
-    rows = cursor.fetchall()
-    cursor.close()
-    conn.close()
-
-    if rows:
-        history_df = pd.DataFrame(rows, columns=[
-            "Initial Balance ($)", "Annual Contribution ($)", "Expected Return (%)",
-            "Contribution Years", "Total Growth Years", "Final Balance ($)", "Date"
-        ])
-        st.dataframe(history_df)
-    else:
-        st.info("No calculations saved yet.")
-except Exception as e:
-    st.error(f"An error occurred: {e}")
+if st.session_state.saved_calculations:
+    history_df = pd.DataFrame(st.session_state.saved_calculations)
+    st.dataframe(history_df)
+else:
+    st.info("No calculations saved yet.")
