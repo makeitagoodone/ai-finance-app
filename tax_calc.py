@@ -1,22 +1,22 @@
 import streamlit as st
-import pytesseract
 from PIL import Image
 import io
+import easyocr
 
 def extract_w2_data(image):
-    text = pytesseract.image_to_string(image)
-    lines = text.split("\n")
+    reader = easyocr.Reader(['en'])
+    results = reader.readtext(image, detail=0)
     extracted_data = {}
     
-    for line in lines:
-        if "Wages, tips, other comp." in line:
-            extracted_data["wages"] = float(line.split()[-1].replace(",", ""))
-        elif "Federal income tax withheld" in line:
-            extracted_data["federal_withholding"] = float(line.split()[-1].replace(",", ""))
-        elif "Social security wages" in line:
-            extracted_data["social_security_wages"] = float(line.split()[-1].replace(",", ""))
-        elif "State income tax" in line:
-            extracted_data["state_withholding"] = float(line.split()[-1].replace(",", ""))
+    for i, text in enumerate(results):
+        if "Wages, tips, other comp." in text:
+            extracted_data["wages"] = float(results[i+1].replace(",", ""))
+        elif "Federal income tax withheld" in text:
+            extracted_data["federal_withholding"] = float(results[i+1].replace(",", ""))
+        elif "Social security wages" in text:
+            extracted_data["social_security_wages"] = float(results[i+1].replace(",", ""))
+        elif "State income tax" in text:
+            extracted_data["state_withholding"] = float(results[i+1].replace(",", ""))
     
     return extracted_data
 
