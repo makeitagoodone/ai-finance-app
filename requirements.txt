@@ -3,5 +3,5 @@ pandas
 numpy
 matplotlib
 psycopg2-binary
-pytesseract
+easyocr
 PIL
