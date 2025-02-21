@@ -91,6 +91,7 @@ st.title("2024 Tax Calculator (Federal & New York State)")
 # File uploader for W-2 image
 uploaded_file = st.file_uploader("Upload W-2 Image", type=["png", "jpg", "jpeg"])
 
+extracted_data = {}  # Ensure extracted_data is always defined
 if uploaded_file:
     image = Image.open(uploaded_file)
     extracted_data = extract_w2_data(image)
