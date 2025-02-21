@@ -4,4 +4,4 @@ numpy
 matplotlib
 psycopg2-binary
 easyocr
-PIL
+pillow
